@@ -192,13 +192,12 @@ nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:
   <!-- CHECK-IN -->
   <section class="tab" id="tab-checkin">
     <h1>Evening check-in</h1>
-    <p class="sub">Tap what you did. Each yes logs your default activity.</p>
+    <p class="sub">Tap what you did. Each yes saves your default activity right away; tap again to undo.</p>
     <div class="field" style="max-width:220px">
       <label for="ci-date">Day</label>
       <input type="date" id="ci-date">
     </div>
     <div id="ci-list"></div>
-    <div class="ci-foot"><button class="btn" id="ci-go" disabled>Log activities</button></div>
   </section>
 
   <!-- LOG -->
@@ -215,8 +214,8 @@ nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:
         <div class="field"><label for="f-min">Minutes</label><input id="f-min" type="number" inputmode="numeric" min="0" step="1" placeholder="30"></div>
       </div>
       <div class="grid2" id="f-sport">
-        <div class="field"><label for="f-w">Weight (kg)</label><input id="f-w" type="number" inputmode="decimal" min="0" step="0.1"></div>
-        <div class="field"><label for="f-km">Distance (km)</label><input id="f-km" type="number" inputmode="decimal" min="0" step="0.01"></div>
+        <div class="field"><label for="f-w">Weight (kg)</label><input id="f-w" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*"></div>
+        <div class="field"><label for="f-km">Distance (km)</label><input id="f-km" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*"></div>
       </div>
       <div class="row">
         <button class="btn" type="submit" id="f-save">Add entry</button>
@@ -302,6 +301,7 @@ function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMon
 function num(k){ const [y,m,d]=k.split("-").map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); }
 function key(n){ const d=new Date(n*DAY); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
 function fmt(k,o){ return new Date(num(k)*DAY).toLocaleDateString(undefined,Object.assign({timeZone:"UTC",weekday:"short",day:"numeric",month:"short"},o||{})); }
+const parseDec = v => { v=String(v??"").trim().replace(",","."); if(v==="") return ""; const n=Number(v); return Number.isFinite(n)&&n>=0?n:NaN; };
 const validKey = k => /^\d{4}-\d{2}-\d{2}$/.test(k||"");
 
 /* ---------- storage ---------- */
@@ -475,8 +475,8 @@ function renderSport(){
   $("#sport").innerHTML=h;
 }
 
-/* ---------- CHECK-IN ---------- */
-let ciDate=todayKey(), ciFollowsToday=true, ciSel={}, ciSport={weight:"",km:"",minutes:""};
+/* ---------- CHECK-IN: every tap saves immediately ---------- */
+let ciDate=todayKey(), ciFollowsToday=true;
 function lastWeight(){ const ws=S.entries.filter(e=>e.cat==="SPORT"&&Number(e.weight)>0).sort((a,b)=>a.date.localeCompare(b.date)); return ws.length?ws[ws.length-1].weight:""; }
 function renderCheckin(){
   $("#ci-date").value=ciDate;
@@ -484,50 +484,54 @@ function renderCheckin(){
   for(const c of CATS){
     const t=S.templates[c.k];
     const logged=S.entries.filter(e=>e.date===ciDate&&e.cat===c.k);
-    const desc=`${esc(t.activity||c.d.activity)}, ${Number(t.minutes)||0} min`;
-    if(logged.length){
-      const l=logged[0];
-      h+=`<div class="ci logged" style="--c:${c.c}"><span class="bar"></span><span><div class="q">${esc(c.q)}</div><div class="t">Logged: ${esc(l.activity)}, ${Number(l.minutes)||0} min${logged.length>1?` (+${logged.length-1} more)`:""}</div></span><span class="yn">Done</span></div>`;
-    } else {
-      const on=!!ciSel[c.k];
-      h+=`<button class="ci" style="--c:${c.c}" data-ci="${c.k}" aria-pressed="${on}"><span class="bar"></span><span><div class="q">${esc(c.q)}</div><div class="t">${desc}</div></span><span class="yn">${on?"Yes":"No"}</span></button>`;
-      if(c.k==="SPORT" && on){
-        h+=`<div class="sport-extra">
-          <div><label for="ci-min">Minutes</label><input id="ci-min" type="number" inputmode="numeric" min="0" value="${esc(ciSport.minutes)}"></div>
-          <div><label for="ci-w">Weight (kg)</label><input id="ci-w" type="number" inputmode="decimal" step="0.1" value="${esc(ciSport.weight)}"></div>
-          <div><label for="ci-km">Distance (km)</label><input id="ci-km" type="number" inputmode="decimal" step="0.01" value="${esc(ciSport.km)}"></div></div>`;
-      }
+    const on=logged.length>0;
+    const desc = on
+      ? "Logged: "+logged.map(l=>`${esc(l.activity)}, ${Number(l.minutes)||0} min`).join("; ")
+      : `${esc(t.activity||c.d.activity)}, ${Number(t.minutes)||0} min`;
+    h+=`<button class="ci" style="--c:${c.c}" data-ci="${c.k}" aria-pressed="${on}"><span class="bar"></span><span><div class="q">${esc(c.q)}</div><div class="t">${desc}</div></span><span class="yn">${on?"Yes":"No"}</span></button>`;
+    const mine = c.k==="SPORT" && logged.find(x=>x.src==="ci");
+    if(mine){
+      h+=`<div class="sport-extra" data-eid="${mine.id}">
+        <div><label for="ci-min">Minutes</label><input id="ci-min" data-f="minutes" type="number" inputmode="numeric" min="0" value="${esc(mine.minutes??"")}"></div>
+        <div><label for="ci-w">Weight (kg)</label><input id="ci-w" data-f="weight" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*" value="${esc(mine.weight??"")}"></div>
+        <div><label for="ci-km">Distance (km)</label><input id="ci-km" data-f="km" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*" value="${esc(mine.km??"")}"></div></div>`;
     }
   }
   $("#ci-list").innerHTML=h;
-  const n=Object.values(ciSel).filter(Boolean).length;
-  const go=$("#ci-go"); go.disabled=!n; go.textContent=n?`Log ${n} ${n===1?"activity":"activities"}`:"Log activities";
 }
-$("#ci-list").addEventListener("click",e=>{
-  const b=e.target.closest("[data-ci]"); if(!b) return;
-  const k=b.dataset.ci; ciSel[k]=!ciSel[k];
-  if(k==="SPORT"&&ciSel[k]){ const t=S.templates.SPORT; ciSport={minutes:String(t.minutes??""),weight:String(t.weight||lastWeight()||""),km:String(t.km??"")}; }
-  renderCheckin();
-});
-$("#ci-list").addEventListener("input",e=>{
-  if(e.target.id==="ci-w") ciSport.weight=e.target.value;
-  if(e.target.id==="ci-km") ciSport.km=e.target.value;
-  if(e.target.id==="ci-min") ciSport.minutes=e.target.value;
-});
-$("#ci-date").addEventListener("change",e=>{ if(!validKey(e.target.value)) return; ciDate=e.target.value; ciFollowsToday=ciDate===todayKey(); ciSel={}; renderCheckin(); });
-$("#ci-go").addEventListener("click",()=>{
-  let n=0;
-  for(const c of CATS){
-    if(!ciSel[c.k]) continue;
-    const t=S.templates[c.k];
-    const e={id:uid(),date:ciDate,cat:c.k,activity:t.activity||c.d.activity,minutes:Number(t.minutes)||0};
-    if(c.k==="SPORT"){ e.minutes=Number(ciSport.minutes)||0; if(ciSport.weight!=="") e.weight=Number(ciSport.weight); if(ciSport.km!=="") e.km=Number(ciSport.km); }
-    S.entries.push(e); n++;
+$("#ci-list").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-ci]"); if(!b) return;
+  const k=b.dataset.ci;
+  const logged=S.entries.filter(x=>x.date===ciDate&&x.cat===k);
+  if(!logged.length){
+    const t=S.templates[k];
+    const en={id:uid(),src:"ci",date:ciDate,cat:k,activity:t.activity||CAT[k].d.activity,minutes:Number(t.minutes)||0};
+    if(k==="SPORT"){
+      const w=(t.weight!==""&&t.weight!=null)?t.weight:lastWeight();
+      if(w!==""&&w!=null) en.weight=Number(w);
+      if(t.km!==""&&t.km!=null) en.km=Number(t.km);
+    }
+    S.entries.push(en);
+    if(save()) toast(`${CAT[k].n} logged for ${fmt(ciDate)}`);
+  } else {
+    const mine=logged.filter(x=>x.src==="ci");
+    if(!mine.length){ toast("This one was added in the Log tab, so edit or delete it there"); return; }
+    const rm=mine[mine.length-1];
+    S.entries=S.entries.filter(x=>x.id!==rm.id);
+    if(save()) toast(`${CAT[k].n} removed for ${fmt(ciDate)}`);
   }
-  if(!n) return;
-  ciSel={}; save(); renderAll();
-  toast(`Logged ${n} ${n===1?"activity":"activities"} for ${fmt(ciDate)}`);
+  renderAll();
 });
+$("#ci-list").addEventListener("input",ev=>{
+  const box=ev.target.closest("[data-eid]"); if(!box) return;
+  const en=S.entries.find(x=>x.id===box.dataset.eid); if(!en) return;
+  const f=ev.target.dataset.f, v=ev.target.value;
+  const n=parseDec(v); if(Number.isNaN(n)) return;
+  if(n===""){ if(f==="minutes") en.minutes=0; else delete en[f]; } else en[f]=n;
+  save();
+});
+$("#ci-list").addEventListener("change",ev=>{ if(ev.target.closest("[data-eid]")){ renderLayers(compute()); renderLog(); } });
+$("#ci-date").addEventListener("change",e=>{ if(!validKey(e.target.value)) return; ciDate=e.target.value; ciFollowsToday=ciDate===todayKey(); renderCheckin(); });
 
 /* ---------- LOG ---------- */
 let editId=null, limit=120;
@@ -561,7 +565,10 @@ $("#f").addEventListener("submit",e=>{
   const entry={id:editId||uid(),date,cat:k,
     activity:$("#f-act").value.trim()||t.activity||CAT[k].d.activity,
     minutes:minRaw===""?(Number(t.minutes)||0):Math.max(0,Number(minRaw))};
-  if(k==="SPORT"){ const w=$("#f-w").value, km=$("#f-km").value; if(w!=="") entry.weight=Number(w); if(km!=="") entry.km=Number(km); }
+  if(k==="SPORT"){ const w=$("#f-w").value, km=$("#f-km").value; const pw=parseDec(w), pk=parseDec(km);
+    if(Number.isNaN(pw)||Number.isNaN(pk)){ toast("Use a number like 83,5 or 83.5"); return; }
+    if(pw!=="") entry.weight=pw; if(pk!=="") entry.km=pk; }
+  if(editId){ const old=S.entries.find(x=>x.id===editId); if(old&&old.src) entry.src=old.src; }
   if(editId){ const i=S.entries.findIndex(x=>x.id===editId); if(i>=0) S.entries[i]=entry; else S.entries.push(entry); }
   else S.entries.push(entry);
   const wasEdit=!!editId;
@@ -617,8 +624,8 @@ function renderSetup(){
       <div><label for="t-${c.k}-a">Activity</label><input id="t-${c.k}-a" data-tk="${c.k}" data-tf="activity" value="${esc(t.activity)}"></div>
       <div><label for="t-${c.k}-m">Minutes</label><input id="t-${c.k}-m" type="number" inputmode="numeric" min="0" data-tk="${c.k}" data-tf="minutes" value="${esc(t.minutes)}"></div>
       ${c.k==="SPORT"?`<div class="extra">
-        <div><label for="t-w">Weight (kg), blank uses last</label><input id="t-w" type="number" inputmode="decimal" step="0.1" data-tk="SPORT" data-tf="weight" value="${esc(t.weight)}"></div>
-        <div><label for="t-km">Distance (km)</label><input id="t-km" type="number" inputmode="decimal" step="0.01" data-tk="SPORT" data-tf="km" value="${esc(t.km)}"></div></div>`:""}
+        <div><label for="t-w">Weight (kg), blank uses last</label><input id="t-w" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*" data-tk="SPORT" data-tf="weight" value="${esc(t.weight)}"></div>
+        <div><label for="t-km">Distance (km)</label><input id="t-km" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[.,]?[0-9]*" data-tk="SPORT" data-tf="km" value="${esc(t.km)}"></div></div>`:""}
     </div>`;
   }).join("");
   $("#start").value=S.startDate;
@@ -633,7 +640,8 @@ function renderStartNote(){
 $("#tpls").addEventListener("input",e=>{
   const el=e.target; if(!el.dataset.tk) return;
   const f=el.dataset.tf, v=el.value;
-  S.templates[el.dataset.tk][f] = f==="activity" ? v : (v===""?"":Number(v));
+  if(f==="activity") S.templates[el.dataset.tk][f]=v;
+  else { const n=parseDec(v); if(Number.isNaN(n)) return; S.templates[el.dataset.tk][f]=n; }
   save(); renderCheckin(); syncForm();
 });
 $("#start").addEventListener("change",e=>{
@@ -690,7 +698,7 @@ function renderAll(){ const R=compute(); renderLayers(R); renderCheckin(); rende
 // re-render when the app comes back (e.g. opened again the next day)
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden) return;
-  if(ciFollowsToday && ciDate!==todayKey()){ ciDate=todayKey(); ciSel={}; }
+  if(ciFollowsToday && ciDate!==todayKey()) ciDate=todayKey();
   renderAll();
 });
 matchMedia("(max-width:540px)").addEventListener?.("change",()=>renderLayers(compute()));
