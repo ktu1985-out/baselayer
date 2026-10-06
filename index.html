@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Base Layer">
+<meta name="theme-color" content="#E8ECEF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151B23" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Base Layer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E8ECEF; --sheet:#F6F8F9; --ink:#1E2833; --muted:#5B6672; --rule:#CBD3DA;
+  --empty:#DAE0E5; --danger:#B23A2E; --good:#2F7A45; --focus:#2C6BD6;
+  --disp:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --body:Barlow,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#151B23; --sheet:#1D252F; --ink:#E4E9EE; --muted:#93A0AD; --rule:#2E3A47;
+    --empty:#27313C; --danger:#E26B5D; --good:#6FC48A; --focus:#7FA8F0;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 var(--body);
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+main{max-width:780px;margin:0 auto;padding:22px 16px calc(100px + env(safe-area-inset-bottom,0px))}
+h1{font-family:var(--disp);font-weight:700;font-size:2.5rem;line-height:1;margin:0}
+h2{font-family:var(--disp);font-weight:600;font-size:1.5rem;line-height:1.1;margin:2.2rem 0 .7rem}
+.sub{color:var(--muted);margin:.4rem 0 1.3rem;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:.88rem;max-width:62ch}
+section.tab{display:none}
+section.tab.on{display:block}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* strata */
+.strata{background:var(--sheet);border-radius:12px;padding:4px 14px}
+.stratum,.axis{display:grid;grid-template-columns:86px 1fr 60px;gap:12px;align-items:center}
+.stratum{padding:9px 0;border-bottom:1px solid var(--rule)}
+.stratum:last-child{border-bottom:0}
+.s-name{font-family:var(--disp);font-size:1.25rem;font-weight:600;line-height:1}
+.s-total{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:3px}
+.cells{display:grid;grid-template-columns:repeat(28,1fr);gap:2px}
+.cell{height:24px;border-radius:2px;background:var(--empty)}
+.cell.pre{background:transparent}
+.cell.pen{background:repeating-linear-gradient(135deg,var(--danger) 0 1.5px,transparent 1.5px 4.5px);opacity:.55}
+.cell.act{background:var(--c)}
+.cell.today{outline:1.5px solid var(--ink);outline-offset:1px}
+.s-next{text-align:right;font-family:var(--disp);font-size:1.35rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.s-next small{display:block;font:500 .7rem/1.2 var(--body);color:var(--muted);margin-top:3px}
+.s-next.done{color:var(--c)}
+.s-next.neg{color:var(--danger)}
+.axis{font-size:.74rem;color:var(--muted);padding:6px 14px 0}
+.axis .span{display:flex;justify-content:space-between}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:.8rem;color:var(--muted);margin:12px 2px 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend b{display:inline-block;width:14px;height:14px;border-radius:2px;background:var(--ink)}
+.legend b.pen{background:repeating-linear-gradient(135deg,var(--danger) 0 1.5px,transparent 1.5px 4.5px);opacity:.7}
+@media (max-width:540px){
+  .stratum,.axis{grid-template-columns:74px 1fr 46px;gap:8px}
+  .cells{grid-template-columns:repeat(21,1fr)}
+  .cells .cell:nth-child(-n+7){display:none}
+  .cell{height:21px}
+  .s-name{font-size:1.08rem}
+  .s-next{font-size:1.15rem}
+  .axis{padding:6px 14px 0}
+}
+
+/* table */
+.tbl-wrap{overflow-x:auto;background:var(--sheet);border-radius:12px;padding:4px 6px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:480px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:.8rem;padding:9px 8px;border-bottom:1px solid var(--rule)}
+td{padding:9px 8px;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0;font-weight:600}
+.num{text-align:right}
+.swatch{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--c);margin-right:7px}
+.up{color:var(--good)} .down{color:var(--danger)}
+
+/* chart */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:.86rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chart{background:var(--sheet);border-radius:12px;padding:14px}
+.chart svg{width:100%;height:190px;display:block;overflow:visible}
+.chart-meta{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.chart-head strong{font-family:var(--disp);font-size:1.6rem;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--sheet);border-radius:12px;padding:12px 14px}
+.stat .v{font-family:var(--disp);font-size:1.6rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .l{font-size:.8rem;color:var(--muted)}
+.spark{margin-top:10px;background:var(--sheet);border-radius:12px;padding:12px 14px}
+.spark svg{width:100%;height:70px;display:block;overflow:visible}
+
+/* forms */
+label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px}
+input,select{width:100%;font:inherit;font-size:16px;padding:10px 11px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);color:var(--ink);min-height:44px}
+input[type=date]{-webkit-appearance:none;appearance:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{margin-bottom:12px}
+.panel{background:var(--sheet);border-radius:12px;padding:16px}
+.panel input,.panel select{background:var(--paper)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:600;padding:11px 18px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;min-height:44px}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.warn{background:transparent;color:var(--danger);border-color:var(--danger)}
+.btn:disabled{opacity:.4;cursor:default}
+[hidden]{display:none!important}
+
+/* check-in */
+.ci{display:grid;grid-template-columns:6px 1fr auto;gap:14px;align-items:center;width:100%;background:var(--sheet);border:0;border-radius:12px;padding:12px 14px 12px 0;margin-bottom:8px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.ci .bar{align-self:stretch;background:var(--c);border-radius:0 3px 3px 0}
+.ci .q{font-weight:600;line-height:1.25}
+.ci .t{font-size:.85rem;color:var(--muted)}
+.ci .yn{font-family:var(--disp);font-weight:600;font-size:1.15rem;min-width:56px;text-align:center;padding:7px 10px;border-radius:7px;border:1px solid var(--rule);color:var(--muted)}
+.ci[aria-pressed="true"] .yn{background:var(--c);border-color:var(--c);color:#fff}
+.ci.logged{cursor:default}
+.ci.logged .yn{border-color:transparent;color:var(--c)}
+.sport-extra{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:-2px 0 12px 20px}
+.ci-foot{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:10px 0;background:linear-gradient(transparent,var(--paper) 30%)}
+.ci-foot .btn{width:100%}
+
+/* log */
+.day-h{font-family:var(--disp);font-size:1.15rem;font-weight:600;margin:20px 0 4px;color:var(--muted)}
+.entry{display:grid;grid-template-columns:4px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule)}
+.entry .bar{align-self:stretch;background:var(--c);border-radius:2px}
+.entry .meta{font-size:.85rem;color:var(--muted)}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:.88rem;padding:8px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:40px}
+.link.del{color:var(--danger)}
+.editing{box-shadow:inset 0 0 0 2px var(--focus)}
+
+/* templates */
+.tpl{display:grid;grid-template-columns:86px 1fr 90px;gap:10px;align-items:end;padding:10px 0;border-bottom:1px solid var(--rule)}
+.tpl:last-child{border-bottom:0}
+.tpl .nm{font-family:var(--disp);font-weight:600;font-size:1.15rem;padding-bottom:10px;border-left:4px solid var(--c);padding-left:8px}
+.tpl .extra{grid-column:2 / 4;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:540px){
+  .tpl{grid-template-columns:1fr 84px}
+  .tpl .nm{grid-column:1 / 3;padding-bottom:0}
+  .tpl .extra{grid-column:1 / 3}
+  .stats{grid-template-columns:1fr 1fr}
+  .sport-extra{grid-template-columns:1fr 1fr 1fr;gap:8px}
+}
+
+/* nav + toast */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--sheet);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav .in{display:grid;grid-template-columns:repeat(4,1fr);max-width:780px;margin:0 auto}
+nav button{background:none;border:0;color:var(--muted);padding:12px 0 14px;font:600 1.08rem/1 var(--disp);position:relative;cursor:pointer}
+nav button[aria-current="page"]{color:var(--ink)}
+nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--ink)}
+#toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);opacity:0;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-weight:500;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9;max-width:90vw}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <!-- LAYERS -->
+  <section class="tab" id="tab-layers">
+    <h1>Base layer</h1>
+    <p class="sub" id="sub"></p>
+    <div class="strata" id="strata"></div>
+    <div class="axis"><span></span><span class="span"><span id="ax-from"></span><span>today</span></span><span></span></div>
+    <div class="legend" id="legend"></div>
+
+    <h2>Last 10 days</h2>
+    <div class="tbl-wrap"><table id="tbl"></table></div>
+    <p class="note">Change compares points in the last 10 days with the 10 days before.</p>
+
+    <h2>Cumulative points</h2>
+    <div class="chips" id="chart-cats"></div>
+    <div class="chips" id="chart-range"></div>
+    <div class="chart" id="chart"></div>
+
+    <h2>Sport numbers</h2>
+    <div id="sport"></div>
+  </section>
+
+  <!-- CHECK-IN -->
+  <section class="tab" id="tab-checkin">
+    <h1>Evening check-in</h1>
+    <p class="sub">Tap what you did. Each yes logs your default activity.</p>
+    <div class="field" style="max-width:220px">
+      <label for="ci-date">Day</label>
+      <input type="date" id="ci-date">
+    </div>
+    <div id="ci-list"></div>
+    <div class="ci-foot"><button class="btn" id="ci-go" disabled>Log activities</button></div>
+  </section>
+
+  <!-- LOG -->
+  <section class="tab" id="tab-log">
+    <h1>Log</h1>
+    <p class="sub">Add, edit or backfill any day.</p>
+    <form class="panel" id="f" autocomplete="off">
+      <div class="grid2">
+        <div class="field"><label for="f-cat">Category</label><select id="f-cat"></select></div>
+        <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="f-act">Activity</label><input id="f-act" list="f-acts" placeholder="Meditation"><datalist id="f-acts"></datalist></div>
+        <div class="field"><label for="f-min">Minutes</label><input id="f-min" type="number" inputmode="numeric" min="0" step="1" placeholder="30"></div>
+      </div>
+      <div class="grid2" id="f-sport">
+        <div class="field"><label for="f-w">Weight (kg)</label><input id="f-w" type="number" inputmode="decimal" min="0" step="0.1"></div>
+        <div class="field"><label for="f-km">Distance (km)</label><input id="f-km" type="number" inputmode="decimal" min="0" step="0.01"></div>
+      </div>
+      <div class="row">
+        <button class="btn" type="submit" id="f-save">Add entry</button>
+        <button class="btn ghost" type="button" id="f-cancel" hidden>Cancel edit</button>
+      </div>
+    </form>
+    <div class="row" style="margin-top:22px">
+      <div style="flex:1;min-width:180px"><label for="filter">Show</label><select id="filter"></select></div>
+    </div>
+    <div id="entries"></div>
+    <div style="margin-top:14px"><button class="btn ghost" id="more" hidden>Show more</button></div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="tab" id="tab-setup">
+    <h1>Setup</h1>
+    <h2>Check-in defaults</h2>
+    <p class="note">What a "yes" in the evening check-in logs. Changes save as you type.</p>
+    <div class="panel" id="tpls"></div>
+
+    <h2>Start day</h2>
+    <div class="panel">
+      <div class="field" style="max-width:220px"><label for="start">First day of tracking</label><input type="date" id="start"></div>
+      <p class="note" id="start-note" style="margin:0"></p>
+    </div>
+
+    <h2>Backup</h2>
+    <div class="panel">
+      <p class="note" style="margin-top:0">Data lives only in this browser. Your Mac and iPhone each keep their own copy, so export here and import there to move it.</p>
+      <div class="row">
+        <button class="btn" id="exp">Export backup</button>
+        <button class="btn ghost" id="imp-btn">Import backup</button>
+        <input type="file" id="imp" accept="application/json,.json" hidden>
+      </div>
+    </div>
+
+    <h2>How points work</h2>
+    <div class="panel note" style="max-width:none">
+      <p style="margin-top:0">The start day scores 1 point and counts as active in every category. Every later day looks at the 10 days before it.</p>
+      <p>No active day in those 10: the day scores −0.5, done or not. Otherwise an active day scores 1 point with 1–3 active days behind it, 1.25 with 4, 1.5 with 5, 2 with 6, and 3 with 7 or more. A day without activity scores 0.</p>
+      <p style="margin-bottom:0">The number at the end of each layer is what today is worth if you do it.</p>
+    </div>
+
+    <h2>Reset</h2>
+    <div class="panel"><button class="btn warn" id="wipe">Delete all data</button></div>
+  </section>
+</main>
+
+<nav><div class="in">
+  <button data-tab="layers">Layers</button>
+  <button data-tab="checkin">Check-in</button>
+  <button data-tab="log">Log</button>
+  <button data-tab="setup">Setup</button>
+</div></nav>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const CATS = [
+  {k:"SPORT",    n:"Sport",    c:"#B4513A", q:"Did you do sport today?",                       d:{activity:"Rowing",          minutes:30, weight:"", km:""}},
+  {k:"MIND",     n:"Mind",     c:"#55688C", q:"Did you meditate or work on your mindset?",     d:{activity:"Meditation",      minutes:20}},
+  {k:"PLAN",     n:"Plan",     c:"#8C7A45", q:"Did you plan your day and update your system?", d:{activity:"Daily planning",  minutes:15}},
+  {k:"OTHERS",   n:"Others",   c:"#B9707A", q:"Did you do something nice for your wife & kids?",d:{activity:"Family time",    minutes:30}},
+  {k:"SPANISH",  n:"Spanish",  c:"#C98F2E", q:"Did you improve your Spanish?",                 d:{activity:"Spanish practice",minutes:20}},
+  {k:"CHAMPION", n:"Champion", c:"#6A4C7D", q:"Did you study and improve at a game?",          d:{activity:"Game study",      minutes:30}},
+  {k:"LEARN",    n:"Learn",    c:"#3F7A66", q:"Did you study and capture the output?",         d:{activity:"Study + notes",   minutes:30}},
+  {k:"FROG",     n:"Frog",     c:"#6F8A2E", q:"Did you eat a frog today?",                     d:{activity:"Admin task",      minutes:30}},
+];
+const CAT = Object.fromEntries(CATS.map(c=>[c.k,c]));
+const KEY = "baselayer.v1";
+const DAY = 864e5;
+const OPAC = {1:.36, 1.25:.5, 1.5:.64, 2:.8, 3:1};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const r2 = n => Math.round(n*100)/100;
+const fmtNum = n => String(r2(n)).replace("-","−");
+const fmtPts = n => (n>0?"+":"") + fmtNum(n);
+
+/* ---------- dates (local calendar days, DST-safe) ---------- */
+function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function num(k){ const [y,m,d]=k.split("-").map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); }
+function key(n){ const d=new Date(n*DAY); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
+function fmt(k,o){ return new Date(num(k)*DAY).toLocaleDateString(undefined,Object.assign({timeZone:"UTC",weekday:"short",day:"numeric",month:"short"},o||{})); }
+const validKey = k => /^\d{4}-\d{2}-\d{2}$/.test(k||"");
+
+/* ---------- storage ---------- */
+function load(){
+  let s=null;
+  try{ s=JSON.parse(localStorage.getItem(KEY)||"null"); }catch(e){}
+  s = s && typeof s==="object" ? s : {};
+  s.entries = Array.isArray(s.entries) ? s.entries.filter(e=>e && CAT[e.cat] && validKey(e.date)) : [];
+  s.templates = s.templates || {};
+  CATS.forEach(c=>{ s.templates[c.k]=Object.assign({},c.d,s.templates[c.k]||{}); });
+  if(!validKey(s.startDate)) s.startDate=todayKey();
+  return s;
+}
+let S = load();
+function save(){
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); return true; }
+  catch(e){ toast("Not saved: browser storage is full or blocked"); return false; }
+}
+save();
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- scoring ---------- */
+function tier(n){ return n>=7?3 : n===6?2 : n===5?1.5 : n===4?1.25 : n>=1?1 : 0; }
+function compute(){
+  const today=num(todayKey());
+  let start=num(S.startDate);
+  for(const e of S.entries){ const n=num(e.date); if(n<start) start=n; }
+  if(start>today) start=today;
+  const len=today-start+1;
+  const R={start,today,len,cats:{},daily:new Array(len).fill(0)};
+  for(const c of CATS){
+    const act=new Uint8Array(len); act[0]=1;               // start day: active everywhere
+    for(const e of S.entries) if(e.cat===c.k){ const i=num(e.date)-start; if(i>=0&&i<len) act[i]=1; }
+    const pts=new Array(len), win=new Array(len);
+    let run=0;                                              // active days in [i-10, i-1]
+    for(let i=0;i<len;i++){
+      if(i>0) run+=act[i-1];
+      if(i>=11) run-=act[i-11];
+      win[i]=run;
+      const p = i===0 ? 1 : run===0 ? -0.5 : act[i] ? tier(run) : 0;
+      pts[i]=p; R.daily[i]+=p;
+    }
+    R.cats[c.k]={act,pts,win,total:pts.reduce((a,b)=>a+b,0)};
+  }
+  return R;
+}
+const sumRange=(a,from,to)=>{ let s=0; for(let i=Math.max(0,from);i<=to&&i<a.length;i++) s+=a[i]; return s; };
+
+/* ---------- toast ---------- */
+let tT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(tT); tT=setTimeout(()=>t.classList.remove("on"),2200); }
+
+/* ---------- LAYERS ---------- */
+let chartCat="ALL", chartRange=30;
+function renderLayers(R){
+  const last=R.len-1;
+  const grand=CATS.reduce((a,c)=>a+R.cats[c.k].total,0);
+  $("#sub").textContent=`${fmt(todayKey(),{weekday:"long",day:"numeric",month:"long"})}. ${fmtNum(grand)} points since ${fmt(key(R.start),{weekday:undefined,day:"numeric",month:"short",year:"numeric"})}.`;
+
+  let h="";
+  for(const c of CATS){
+    const C=R.cats[c.k]; let cells="";
+    for(let d=R.today-27; d<=R.today; d++){
+      const i=d-R.start, k=key(d);
+      if(i<0){ cells+=`<div class="cell pre"></div>`; continue; }
+      const p=C.pts[i]; let cls="cell", st="";
+      if(p<0) cls+=" pen";
+      else if(p>0){ cls+=" act"; st=`opacity:${OPAC[p]??1}`; }
+      if(d===R.today) cls+=" today";
+      cells+=`<div class="${cls}" style="${st}" title="${esc(fmt(k))}: ${fmtPts(p)} pts"></div>`;
+    }
+    const done=C.act[last]&&last>0, run=C.win[last], worth=run===0?-0.5:tier(run);
+    const next = last===0
+      ? `<div class="s-next done">+1<small>start day</small></div>`
+      : done
+        ? `<div class="s-next ${C.pts[last]<0?"neg":"done"}">${fmtPts(C.pts[last])}<small>done today</small></div>`
+        : `<div class="s-next ${worth<0?"neg":""}">${fmtPts(worth)}<small>${worth<0?"lapsed":"if done"}</small></div>`;
+    h+=`<div class="stratum" style="--c:${c.c}">
+      <div><div class="s-name">${c.n}</div><div class="s-total">${fmtNum(C.total)} pts</div></div>
+      <div class="cells">${cells}</div>${next}</div>`;
+  }
+  $("#strata").innerHTML=h;
+  const narrow=matchMedia("(max-width:540px)").matches;
+  $("#ax-from").textContent=fmt(key(R.today-(narrow?20:27)),{weekday:undefined});
+  $("#legend").innerHTML=[1,1.25,1.5,2,3].map(v=>`<span><b style="opacity:${OPAC[v]}"></b>${fmtNum(v)}</span>`).join("")
+    +`<span><b class="pen"></b>−0.5 lapsed</span><span>points per active day</span>`;
+
+  // table
+  let rows=`<tr><th>Category</th><th class="num">Active</th><th class="num">Points</th><th class="num">Prior 10</th><th class="num">Change</th><th class="num">Total</th></tr>`;
+  let tA=0,tL=0,tP=0;
+  const row=(name,col,active,l,p,total)=>{
+    let ch="—",cls="";
+    if(p!==0){ const pct=(l-p)/Math.abs(p)*100; ch=(pct>0?"+":"")+Math.round(pct)+"%"; cls=pct>0?"up":pct<0?"down":""; }
+    else if(l>0){ ch="new"; cls="up"; }
+    else if(l<0){ cls="down"; }
+    return `<tr><td>${col?`<span class="swatch" style="--c:${col}"></span>`:""}${name}</td><td class="num">${active}${col?"/10":""}</td><td class="num">${fmtNum(l)}</td><td class="num">${fmtNum(p)}</td><td class="num ${cls}">${ch.replace("-","−")}</td><td class="num">${fmtNum(total)}</td></tr>`;
+  };
+  for(const c of CATS){
+    const C=R.cats[c.k];
+    const active=sumRange(Array.from(C.act),last-9,last);
+    const l=sumRange(C.pts,last-9,last), p=sumRange(C.pts,last-19,last-10);
+    tA+=active; tL+=l; tP+=p;
+    rows+=row(c.n,c.c,active,l,p,C.total);
+  }
+  rows+=row("All",null,tA+"/80",tL,tP,grand);
+  $("#tbl").innerHTML=rows;
+
+  renderChart(R); renderSport();
+}
+
+function renderChart(R){
+  $("#chart-cats").innerHTML=[{k:"ALL",n:"All"},...CATS].map(c=>`<button class="chip" data-cc="${c.k}" aria-pressed="${chartCat===c.k}">${c.n}</button>`).join("");
+  $("#chart-range").innerHTML=[[30,"30 days"],[90,"90 days"],["all","All time"]].map(([v,l])=>`<button class="chip" data-cr="${v}" aria-pressed="${chartRange===v}">${l}</button>`).join("");
+  const daily = chartCat==="ALL" ? R.daily : R.cats[chartCat].pts;
+  const cum=[]; let s=0; for(const v of daily){ s+=v; cum.push(s); }
+  const from = chartRange==="all" ? 0 : Math.max(0,cum.length-chartRange);
+  let vals=cum.slice(from); if(vals.length===1) vals=[vals[0],vals[0]];
+  const gained = cum[cum.length-1] - (from>0?cum[from-1]:0);
+  const W=600,H=190,P=6;
+  const mn=Math.min(0,...vals), mx=Math.max(1,...vals);
+  const x=i=>i/(vals.length-1)*W, y=v=>H-P-(v-mn)/(mx-mn)*(H-2*P);
+  const line=vals.map((v,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const col = chartCat==="ALL" ? "var(--ink)" : CAT[chartCat].c;
+  const zero = mn<0 ? `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--rule)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>` : "";
+  $("#chart").innerHTML=`
+    <div class="chart-head"><strong>${fmtNum(cum[cum.length-1])} pts</strong><span class="note">${fmtPts(gained)} in this range</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Cumulative points">
+      ${zero}
+      <path d="${line}L${W},${H}L0,${H}Z" fill="${col}" opacity=".1"/>
+      <path d="${line}" fill="none" stroke="${col}" stroke-width="2.25" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="chart-meta"><span>${fmt(key(R.start+from),{weekday:undefined})}</span><span>${fmt(key(R.today),{weekday:undefined})}</span></div>`;
+}
+
+function renderSport(){
+  const sp=S.entries.filter(e=>e.cat==="SPORT").sort((a,b)=>a.date.localeCompare(b.date));
+  const ws=sp.filter(e=>Number(e.weight)>0);
+  const t=num(todayKey());
+  const km30=sp.filter(e=>num(e.date)>t-30).reduce((a,e)=>a+(Number(e.km)||0),0);
+  const kmAll=sp.reduce((a,e)=>a+(Number(e.km)||0),0);
+  const min30=sp.filter(e=>num(e.date)>t-30).reduce((a,e)=>a+(Number(e.minutes)||0),0);
+  const lastW=ws.length?Number(ws[ws.length-1].weight):null;
+  let h=`<div class="stats">
+    <div class="stat"><div class="v">${lastW!=null?fmtNum(lastW)+" kg":"—"}</div><div class="l">Latest weight</div></div>
+    <div class="stat"><div class="v">${fmtNum(km30)} km</div><div class="l">Last 30 days, ${fmtNum(min30)} min</div></div>
+    <div class="stat"><div class="v">${fmtNum(kmAll)} km</div><div class="l">All time</div></div></div>`;
+  if(ws.length>=2){
+    const pts=ws.slice(-30).map(e=>({d:num(e.date),w:Number(e.weight)}));
+    const d0=pts[0].d, d1=Math.max(pts[pts.length-1].d,d0+1);
+    const mn=Math.min(...pts.map(p=>p.w)), mx=Math.max(...pts.map(p=>p.w)), rg=Math.max(mx-mn,0.5);
+    const W=600,H=70;
+    const path=pts.map((p,i)=>`${i?"L":"M"}${((p.d-d0)/(d1-d0)*W).toFixed(1)},${(H-4-(p.w-mn)/rg*(H-8)).toFixed(1)}`).join("");
+    h+=`<div class="spark"><div class="chart-meta" style="margin-bottom:6px"><span>Weight, last ${pts.length} weigh-ins</span><span>${fmtNum(mn)}–${fmtNum(mx)} kg</span></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="${CAT.SPORT.c}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div>`;
+  }
+  $("#sport").innerHTML=h;
+}
+
+/* ---------- CHECK-IN ---------- */
+let ciDate=todayKey(), ciFollowsToday=true, ciSel={}, ciSport={weight:"",km:"",minutes:""};
+function lastWeight(){ const ws=S.entries.filter(e=>e.cat==="SPORT"&&Number(e.weight)>0).sort((a,b)=>a.date.localeCompare(b.date)); return ws.length?ws[ws.length-1].weight:""; }
+function renderCheckin(){
+  $("#ci-date").value=ciDate;
+  let h="";
+  for(const c of CATS){
+    const t=S.templates[c.k];
+    const logged=S.entries.filter(e=>e.date===ciDate&&e.cat===c.k);
+    const desc=`${esc(t.activity||c.d.activity)}, ${Number(t.minutes)||0} min`;
+    if(logged.length){
+      const l=logged[0];
+      h+=`<div class="ci logged" style="--c:${c.c}"><span class="bar"></span><span><div class="q">${esc(c.q)}</div><div class="t">Logged: ${esc(l.activity)}, ${Number(l.minutes)||0} min${logged.length>1?` (+${logged.length-1} more)`:""}</div></span><span class="yn">Done</span></div>`;
+    } else {
+      const on=!!ciSel[c.k];
+      h+=`<button class="ci" style="--c:${c.c}" data-ci="${c.k}" aria-pressed="${on}"><span class="bar"></span><span><div class="q">${esc(c.q)}</div><div class="t">${desc}</div></span><span class="yn">${on?"Yes":"No"}</span></button>`;
+      if(c.k==="SPORT" && on){
+        h+=`<div class="sport-extra">
+          <div><label for="ci-min">Minutes</label><input id="ci-min" type="number" inputmode="numeric" min="0" value="${esc(ciSport.minutes)}"></div>
+          <div><label for="ci-w">Weight (kg)</label><input id="ci-w" type="number" inputmode="decimal" step="0.1" value="${esc(ciSport.weight)}"></div>
+          <div><label for="ci-km">Distance (km)</label><input id="ci-km" type="number" inputmode="decimal" step="0.01" value="${esc(ciSport.km)}"></div></div>`;
+      }
+    }
+  }
+  $("#ci-list").innerHTML=h;
+  const n=Object.values(ciSel).filter(Boolean).length;
+  const go=$("#ci-go"); go.disabled=!n; go.textContent=n?`Log ${n} ${n===1?"activity":"activities"}`:"Log activities";
+}
+$("#ci-list").addEventListener("click",e=>{
+  const b=e.target.closest("[data-ci]"); if(!b) return;
+  const k=b.dataset.ci; ciSel[k]=!ciSel[k];
+  if(k==="SPORT"&&ciSel[k]){ const t=S.templates.SPORT; ciSport={minutes:String(t.minutes??""),weight:String(t.weight||lastWeight()||""),km:String(t.km??"")}; }
+  renderCheckin();
+});
+$("#ci-list").addEventListener("input",e=>{
+  if(e.target.id==="ci-w") ciSport.weight=e.target.value;
+  if(e.target.id==="ci-km") ciSport.km=e.target.value;
+  if(e.target.id==="ci-min") ciSport.minutes=e.target.value;
+});
+$("#ci-date").addEventListener("change",e=>{ if(!validKey(e.target.value)) return; ciDate=e.target.value; ciFollowsToday=ciDate===todayKey(); ciSel={}; renderCheckin(); });
+$("#ci-go").addEventListener("click",()=>{
+  let n=0;
+  for(const c of CATS){
+    if(!ciSel[c.k]) continue;
+    const t=S.templates[c.k];
+    const e={id:uid(),date:ciDate,cat:c.k,activity:t.activity||c.d.activity,minutes:Number(t.minutes)||0};
+    if(c.k==="SPORT"){ e.minutes=Number(ciSport.minutes)||0; if(ciSport.weight!=="") e.weight=Number(ciSport.weight); if(ciSport.km!=="") e.km=Number(ciSport.km); }
+    S.entries.push(e); n++;
+  }
+  if(!n) return;
+  ciSel={}; save(); renderAll();
+  toast(`Logged ${n} ${n===1?"activity":"activities"} for ${fmt(ciDate)}`);
+});
+
+/* ---------- LOG ---------- */
+let editId=null, limit=120;
+function fillCatSelects(){
+  $("#f-cat").innerHTML=CATS.map(c=>`<option value="${c.k}">${c.n}</option>`).join("");
+  $("#filter").innerHTML=`<option value="ALL">All categories</option>`+CATS.map(c=>`<option value="${c.k}">${c.n}</option>`).join("");
+}
+function syncForm(){
+  const k=$("#f-cat").value;
+  $("#f-sport").hidden = k!=="SPORT";
+  const acts=new Set([S.templates[k].activity, ...S.entries.filter(e=>e.cat===k).map(e=>e.activity)].filter(Boolean));
+  $("#f-acts").innerHTML=[...acts].map(a=>`<option value="${esc(a)}">`).join("");
+  $("#f-act").placeholder=S.templates[k].activity||"";
+  $("#f-min").placeholder=S.templates[k].minutes??"";
+}
+function resetForm(keep){
+  editId=null;
+  const cat=$("#f-cat").value, date=$("#f-date").value;
+  $("#f").reset();
+  if(keep){ $("#f-cat").value=cat; $("#f-date").value=date; } else $("#f-date").value=todayKey();
+  $("#f-save").textContent="Add entry"; $("#f-cancel").hidden=true; $("#f").classList.remove("editing");
+  syncForm();
+}
+$("#f-cat").addEventListener("change",syncForm);
+$("#f-cancel").addEventListener("click",()=>resetForm(false));
+$("#f").addEventListener("submit",e=>{
+  e.preventDefault();
+  const k=$("#f-cat").value, date=$("#f-date").value, t=S.templates[k];
+  if(!validKey(date)){ toast("Pick a date first"); return; }
+  const minRaw=$("#f-min").value;
+  const entry={id:editId||uid(),date,cat:k,
+    activity:$("#f-act").value.trim()||t.activity||CAT[k].d.activity,
+    minutes:minRaw===""?(Number(t.minutes)||0):Math.max(0,Number(minRaw))};
+  if(k==="SPORT"){ const w=$("#f-w").value, km=$("#f-km").value; if(w!=="") entry.weight=Number(w); if(km!=="") entry.km=Number(km); }
+  if(editId){ const i=S.entries.findIndex(x=>x.id===editId); if(i>=0) S.entries[i]=entry; else S.entries.push(entry); }
+  else S.entries.push(entry);
+  const wasEdit=!!editId;
+  save(); resetForm(true); renderAll();
+  toast(wasEdit?"Changes saved":`Added ${CAT[k].n.toLowerCase()} for ${fmt(date)}`);
+});
+function renderLog(){
+  const f=$("#filter").value||"ALL";
+  const list=S.entries.filter(e=>f==="ALL"||e.cat===f)
+    .sort((a,b)=>b.date.localeCompare(a.date)||CATS.findIndex(c=>c.k===a.cat)-CATS.findIndex(c=>c.k===b.cat));
+  const shown=list.slice(0,limit);
+  if(!list.length){ $("#entries").innerHTML=`<p class="note" style="margin-top:18px">No entries yet. Add one above, or use the evening check-in.</p>`; $("#more").hidden=true; return; }
+  let h="", cur="";
+  for(const e of shown){
+    if(e.date!==cur){ cur=e.date; h+=`<div class="day-h">${fmt(e.date,{year:num(e.date)<num(todayKey())-300?"numeric":undefined})}</div>`; }
+    const c=CAT[e.cat], bits=[`${Number(e.minutes)||0} min`];
+    if(e.weight!=null&&e.weight!=="") bits.push(`${fmtNum(e.weight)} kg`);
+    if(e.km!=null&&e.km!=="") bits.push(`${fmtNum(e.km)} km`);
+    h+=`<div class="entry" style="--c:${c.c}"><span class="bar"></span>
+      <div><div>${esc(e.activity)}</div><div class="meta">${c.n}, ${bits.join(", ")}</div></div>
+      <div><button class="link" data-edit="${e.id}">Edit</button><button class="link del" data-del="${e.id}">Delete</button></div></div>`;
+  }
+  $("#entries").innerHTML=h;
+  $("#more").hidden=list.length<=limit;
+}
+$("#filter").addEventListener("change",()=>{ limit=120; renderLog(); });
+$("#more").addEventListener("click",()=>{ limit+=200; renderLog(); });
+$("#entries").addEventListener("click",ev=>{
+  const ed=ev.target.closest("[data-edit]"), dl=ev.target.closest("[data-del]");
+  if(ed){
+    const e=S.entries.find(x=>x.id===ed.dataset.edit); if(!e) return;
+    editId=e.id;
+    $("#f-cat").value=e.cat; syncForm();
+    $("#f-date").value=e.date; $("#f-act").value=e.activity; $("#f-min").value=e.minutes??"";
+    $("#f-w").value=e.weight??""; $("#f-km").value=e.km??"";
+    $("#f-save").textContent="Save changes"; $("#f-cancel").hidden=false; $("#f").classList.add("editing");
+    $("#f").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  if(dl){
+    const e=S.entries.find(x=>x.id===dl.dataset.del); if(!e) return;
+    if(!confirm(`Delete "${e.activity}" on ${fmt(e.date)}?`)) return;
+    S.entries=S.entries.filter(x=>x.id!==e.id);
+    if(editId===e.id) resetForm(false);
+    save(); renderAll(); toast("Entry deleted");
+  }
+});
+
+/* ---------- SETUP ---------- */
+function renderSetup(){
+  $("#tpls").innerHTML=CATS.map(c=>{
+    const t=S.templates[c.k];
+    return `<div class="tpl" style="--c:${c.c}"><div class="nm">${c.n}</div>
+      <div><label for="t-${c.k}-a">Activity</label><input id="t-${c.k}-a" data-tk="${c.k}" data-tf="activity" value="${esc(t.activity)}"></div>
+      <div><label for="t-${c.k}-m">Minutes</label><input id="t-${c.k}-m" type="number" inputmode="numeric" min="0" data-tk="${c.k}" data-tf="minutes" value="${esc(t.minutes)}"></div>
+      ${c.k==="SPORT"?`<div class="extra">
+        <div><label for="t-w">Weight (kg), blank uses last</label><input id="t-w" type="number" inputmode="decimal" step="0.1" data-tk="SPORT" data-tf="weight" value="${esc(t.weight)}"></div>
+        <div><label for="t-km">Distance (km)</label><input id="t-km" type="number" inputmode="decimal" step="0.01" data-tk="SPORT" data-tf="km" value="${esc(t.km)}"></div></div>`:""}
+    </div>`;
+  }).join("");
+  $("#start").value=S.startDate;
+  renderStartNote();
+}
+function renderStartNote(){
+  const R=compute(), eff=key(R.start);
+  $("#start-note").textContent = eff===S.startDate
+    ? `Tracking since ${fmt(eff,{year:"numeric"})}. Entries before this date move the start day back automatically.`
+    : `Effective start is ${fmt(eff,{year:"numeric"})}, your oldest entry. It counts as active in every category.`;
+}
+$("#tpls").addEventListener("input",e=>{
+  const el=e.target; if(!el.dataset.tk) return;
+  const f=el.dataset.tf, v=el.value;
+  S.templates[el.dataset.tk][f] = f==="activity" ? v : (v===""?"":Number(v));
+  save(); renderCheckin(); syncForm();
+});
+$("#start").addEventListener("change",e=>{
+  if(!validKey(e.target.value)) return;
+  S.startDate=e.target.value; save(); renderAll(); renderStartNote(); toast("Start day updated");
+});
+$("#exp").addEventListener("click",async()=>{
+  const name=`baselayer-${todayKey()}.json`;
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const file=new File([blob],name,{type:"application/json"});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; }
+  }catch(err){ if(err&&err.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+});
+$("#imp-btn").addEventListener("click",()=>$("#imp").click());
+$("#imp").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const data=JSON.parse(await f.text());
+    if(!data||!Array.isArray(data.entries)) throw new Error("no entries");
+    if(!confirm(`Replace current data with ${data.entries.length} entries from this backup?`)) return;
+    localStorage.setItem(KEY,JSON.stringify(data)); S=load(); save();
+    renderSetup(); resetForm(false); renderAll(); toast("Backup imported");
+  }catch(err){ toast("That file isn't a Base Layer backup"); }
+});
+$("#wipe").addEventListener("click",()=>{
+  if(!confirm("Delete every entry, default and the start day?")) return;
+  if(!confirm("This can't be undone. Export a backup first if unsure. Delete now?")) return;
+  localStorage.removeItem(KEY); S=load(); save(); renderSetup(); resetForm(false); renderAll(); toast("All data deleted");
+});
+
+/* ---------- chart controls ---------- */
+document.addEventListener("click",e=>{
+  const cc=e.target.closest("[data-cc]"), cr=e.target.closest("[data-cr]");
+  if(cc){ chartCat=cc.dataset.cc; renderChart(compute()); }
+  if(cr){ chartRange=cr.dataset.cr==="all"?"all":Number(cr.dataset.cr); renderChart(compute()); }
+});
+
+/* ---------- tabs ---------- */
+function show(tab){
+  if(!["layers","checkin","log","setup"].includes(tab)) tab="layers";
+  document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="tab-"+tab));
+  document.querySelectorAll("nav button").forEach(b=>{ if(b.dataset.tab===tab) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  history.replaceState(null,"","#"+tab);
+  window.scrollTo(0,0);
+}
+document.querySelector("nav").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b) show(b.dataset.tab); });
+
+function renderAll(){ const R=compute(); renderLayers(R); renderCheckin(); renderLog(); }
+
+// re-render when the app comes back (e.g. opened again the next day)
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) return;
+  if(ciFollowsToday && ciDate!==todayKey()){ ciDate=todayKey(); ciSel={}; }
+  renderAll();
+});
+matchMedia("(max-width:540px)").addEventListener?.("change",()=>renderLayers(compute()));
+
+fillCatSelects(); renderSetup(); resetForm(false); renderAll();
+show(location.hash.slice(1)||"layers");
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
